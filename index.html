@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <title>Image Fourier Transform</title>
+
+        <script src="js/fourierimage.js"></script>
+    </head>
+    <body>
+        <h1>Image Fourier Transform</h1>
+
+        <div style="display: inline-block; margin-right: 22px">
+            Original image
+            <br>
+            <canvas id="canvas0"></canvas>
+            <br>
+            <input type="button" id="draw-btn" value="Draw image">
+        </div>
+        <div style="display: inline-block; margin-right: 22px">
+            Fourier image
+            <br>
+            <canvas id="canvas1"></canvas>
+            <br>
+            <input type="button" id="transform-btn" value="Compute 2D DFT">
+        </div>
+        <div style="display: inline-block">
+            Reconstructed image
+            <br>
+            <canvas id="canvas2"></canvas><br>
+            <input type="button" id="reconstruct-btn" value="Reconstruct image">
+        </div>
+    </body>
+</html>
