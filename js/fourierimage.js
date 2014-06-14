@@ -8,8 +8,8 @@
 
 /**********
  * config */
-var dims = [250, 250];
-var imageLoc = 'image.png';
+var dims = [54, 54];
+var imageLoc = 'small.png'; //must have 'dims' dimensions
 
 /*************
  * constants */
@@ -20,54 +20,162 @@ var canvases;
 var ctxs;
 var h;
 var $h; //h hat
+var h_; //h prime, the reconstructed h values
 
 /******************
  * work functions */
 function initFourierImage() {
     //event listeners
     $s('#draw-btn').addEventListener('click', function() {
-        disableButtons();
+        disableButtons(function() {
+            //draw the initial image
+            var img = new Image();
+            img.addEventListener('load', function() {
+                ctxs[0].drawImage(img, 0, 0, img.width, img.height);
 
-        //draw the initial image
-        var img = new Image();
-        img.addEventListener('load', function() {
-            ctxs[0].drawImage(img, 0, 0, img.width, img.height);
+                //grab the pixels
+                var imageData = ctxs[0].getImageData(0, 0, dims[0], dims[1]);
+                var h_es = []; //the h values
+                for (var ai = 0; ai < imageData.data.length; ai+=4) {
+                    //greyscale, so you only need every 4th value
+                    h_es.push(imageData.data[ai]);
+                }
 
-            //grab the pixels
-            var cw = canvases[0].width, ch = canvases[0].height;
-            var imageData = ctxs[0].getImageData(0, 0, cw, ch);
-            var h_es = []; //the h values
-            for (var ai = 0; ai < imageData.data.length; ai+=4) {
-                //greyscale, so you only need every 4th value
-                h_es.push(imageData.data[ai]);
-            }
+                //initialize the h values
+                h = function(n, m) {
+                    var idx = n*dims[0] + m;
+                    return h_es[idx];
+                }; //create it in function form to make the code match the math
 
-            //initialize the h values
-            h = function(n, m) {
-                var idx = n*cw + m;
-                return h_es[idx];
-            }; //create it in function form to make the code match the math
+                enableButtons();
+            });
 
-            enableButtons();
+            //THE IMAGE DIMENSIONS MUST MATCH dims FOR THIS TO WORK!!!
+            img.src = imageLoc;
         });
-        img.src = imageLoc;
     });
 
     $s('#transform-btn').addEventListener('click', function() {
-        //here
+        //placed in a callback so the UI has a chance to update
+        disableButtons(function() {
+            //compute the h hat values
+            var h_hats = [];
+            var maxMagnitude = 0;
+            for (var k = 0; k < dims[1]; k++) {
+                for (var l = 0; l < dims[0]; l++) {
+                    var accum = new Complex(0, 0);
+                    var wk = 2*Math.PI*(k/dims[1]);
+                    var wl = 2*Math.PI*(l/dims[0]);
+                    for (var n = 0; n < dims[1]; n++) {
+                        for (var m = 0; m < dims[0]; m++) {
+                            var val = cisExp(-(wk*n + wl*m)).times(h(n, m));
+                            accum = accum.plus(val);
+                        }
+                    }
+                    var mag = accum.magnitude();
+                    if (mag > maxMagnitude) maxMagnitude = mag;
+                    h_hats.push(accum);
+                }
+            }
+
+            //store them in a nice function to match the math
+            $h = function(k, l) {
+                var idx = k*dims[0] + l;
+                return h_hats[idx];
+            };
+
+            //draw the pixels
+            var currImageData = ctxs[1].getImageData(0, 0, dims[0], dims[1]);
+            var logOfMaxMag = Math.log(maxMagnitude+1);
+            for (var k = 0; k < dims[1]; k++) {
+                for (var l = 0; l < dims[0]; l++) {
+                    var idxInPixels = 4*(dims[0]*k + l);
+                    currImageData.data[idxInPixels+3] = 255; //full alpha
+
+                    var color = Math.log($h(k, l).magnitude() + 1);
+                    color = Math.round(255*(color/logOfMaxMag));
+                    for (var c = 0; c < 3; c++) { //RGB are the same, lol c++
+                        currImageData.data[idxInPixels+c] = color;
+                    }
+                }
+            }
+            ctxs[1].putImageData(currImageData, 0, 0);
+
+            enableButtons();
+        });
     });
 
     $s('#reconstruct-btn').addEventListener('click', function() {
-        //here
+        disableButtons(function() {
+            //compute the h prime values
+            var h_primes = [];
+            var NM = dims[1]*dims[0];
+            for (var n = 0; n < dims[1]; n++) {
+                for (var m = 0; m < dims[0]; m++) {
+                    var accum = new Complex(0, 0);
+                    for (var k = 0; k < dims[1]; k++) {
+                        for (var l = 0; l < dims[0]; l++) {
+                            var wk = 2*Math.PI*(k/dims[1]);
+                            var wl = 2*Math.PI*(l/dims[0]);
+                            var val = cisExp(wk*n + wl*m).times($h(k, l));
+                            accum = accum.plus(val);
+                        }
+                    }
+                    h_primes.push(Math.round(accum.times(1/NM).real));
+                }
+            }
+
+            //store them in a nice function to match the math
+            h_ = function(n, m) {
+                var idx = n*dims[0] + m;
+                return h_primes[idx];
+            };
+
+            //draw the pixels
+            var currImageData = ctxs[2].getImageData(0, 0, dims[0], dims[1]);
+            for (var n = 0; n < dims[1]; n++) {
+                for (var m = 0; m < dims[0]; m++) {
+                    var idxInPixels = 4*(dims[0]*n + m);
+                    currImageData.data[idxInPixels+3] = 255; //full alpha
+                    for (var c = 0; c < 3; c++) { //RGB are the same, lol c++
+                        currImageData.data[idxInPixels+c] = h_(n, m);
+                    }
+                }
+            }
+            ctxs[2].putImageData(currImageData, 0, 0);
+
+            enableButtons();
+        });
+    });
+
+    $s('#difference-btn').addEventListener('click', function() {
+        disableButtons(function() {
+            //draw the pixels
+            var currImageData = ctxs[3].getImageData(0, 0, dims[0], dims[1]);
+            for (var n = 0; n < dims[1]; n++) {
+                for (var m = 0; m < dims[0]; m++) {
+                    var idxInPixels = 4*(dims[0]*n + m); //idx in the pixels array
+                    for (var c = 0; c < 3; c++) {
+                        currImageData.data[idxInPixels+c] = 0;
+                    }
+                    var error = Math.ceil(Math.abs(h_(n, m) - h(n, m)));
+                    currImageData.data[idxInPixels+3] = error; //alpha		
+                }
+            }
+            ctxs[3].putImageData(currImageData, 0, 0);
+
+            enableButtons();
+        });
     });
 
     //initialize the working variables
     canvases = [], ctxs = [];
-    for (var ai = 0; ai < 3; ai++) {
+    for (var ai = 0; ai < 4; ai++) {
         canvases[ai] = $s('#canvas'+ai);
         canvases[ai].width = dims[0], canvases[ai].height = dims[1];
         ctxs[ai] = canvases[ai].getContext('2d');
     }
+    h = $h = h_ = function() { return 0; };
 }
 
 /********************
@@ -107,16 +215,20 @@ function getPixelsFromImage(location, callback) {
 	img.src = location; //load the image
 }
 
-function disableButtons() {
+function disableButtons(callback) {
     $s('#draw-btn').disabled = true;
     $s('#transform-btn').disabled = true;
     $s('#reconstruct-btn').disabled = true;
+    $s('#difference-btn').disabled = true;
+
+    setTimeout(callback, 6); //6ms for the UI to update
 }
 
 function enableButtons() {
     $s('#draw-btn').disabled = false;
     $s('#transform-btn').disabled = false;
     $s('#reconstruct-btn').disabled = false;
+    $s('#difference-btn').disabled = false;
 }
 
 function $s(id) { //for convenience
@@ -149,9 +261,13 @@ Complex.prototype.plus = function(z) {
     return new Complex(this.real+z.real, this.imag+z.imag);
 };
 Complex.prototype.times = function(z) {
-    var rePart = this.real*z.real - this.imag*z.imag;
-    var imPart = this.real*z.imag + this.imag*z.real;
-    return new Complex(rePart, imPart);
+    if (typeof z === 'object') { //complex multiplication
+        var rePart = this.real*z.real - this.imag*z.imag;
+        var imPart = this.real*z.imag + this.imag*z.real;
+        return new Complex(rePart, imPart);
+    } else { //scalar multiplication
+        return new Complex(z*this.real, z*this.imag);
+    }
 };
 
 window.addEventListener('load', initFourierImage);
