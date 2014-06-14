@@ -27,6 +27,9 @@ var h_; //h prime, the reconstructed h values
 function initFourierImage() {
     //event listeners
     $s('#draw-btn').addEventListener('click', function() {
+        var start = +new Date();
+
+        //placed in a callback so the UI has a chance to update
         disableButtons(function() {
             //draw the initial image
             var img = new Image();
@@ -48,6 +51,9 @@ function initFourierImage() {
                 }; //create it in function form to make the code match the math
 
                 enableButtons();
+
+                var duration = +new Date() - start;
+                console.log('It took '+duration+'ms to draw the image.');
             });
 
             //THE IMAGE DIMENSIONS MUST MATCH dims FOR THIS TO WORK!!!
@@ -56,16 +62,18 @@ function initFourierImage() {
     });
 
     $s('#transform-btn').addEventListener('click', function() {
+        var start = +new Date();
+
         //placed in a callback so the UI has a chance to update
         disableButtons(function() {
             //compute the h hat values
             var h_hats = [];
             var maxMagnitude = 0;
             for (var k = 0; k < dims[1]; k++) {
+                var wk = 2*Math.PI*(k/dims[1]) - Math.PI;
                 for (var l = 0; l < dims[0]; l++) {
+                    var wl = 2*Math.PI*(l/dims[0]) - Math.PI;
                     var accum = new Complex(0, 0);
-                    var wk = 2*Math.PI*(k/dims[1]);
-                    var wl = 2*Math.PI*(l/dims[0]);
                     for (var n = 0; n < dims[1]; n++) {
                         for (var m = 0; m < dims[0]; m++) {
                             var val = cisExp(-(wk*n + wl*m)).times(h(n, m));
@@ -91,7 +99,6 @@ function initFourierImage() {
                 for (var l = 0; l < dims[0]; l++) {
                     var idxInPixels = 4*(dims[0]*k + l);
                     currImageData.data[idxInPixels+3] = 255; //full alpha
-
                     var color = Math.log($h(k, l).magnitude() + 1);
                     color = Math.round(255*(color/logOfMaxMag));
                     for (var c = 0; c < 3; c++) { //RGB are the same, lol c++
@@ -102,10 +109,16 @@ function initFourierImage() {
             ctxs[1].putImageData(currImageData, 0, 0);
 
             enableButtons();
+
+            var duration = +new Date() - start;
+            console.log('It took '+duration+'ms to compute the FT.');
         });
     });
 
     $s('#reconstruct-btn').addEventListener('click', function() {
+        var start = +new Date();
+
+        //placed in a callback so the UI has a chance to update
         disableButtons(function() {
             //compute the h prime values
             var h_primes = [];
@@ -114,9 +127,9 @@ function initFourierImage() {
                 for (var m = 0; m < dims[0]; m++) {
                     var accum = new Complex(0, 0);
                     for (var k = 0; k < dims[1]; k++) {
+                        var wk = 2*Math.PI*(k/dims[1]) - Math.PI;
                         for (var l = 0; l < dims[0]; l++) {
-                            var wk = 2*Math.PI*(k/dims[1]);
-                            var wl = 2*Math.PI*(l/dims[0]);
+                            var wl = 2*Math.PI*(l/dims[0]) - Math.PI;
                             var val = cisExp(wk*n + wl*m).times($h(k, l));
                             accum = accum.plus(val);
                         }
@@ -145,10 +158,16 @@ function initFourierImage() {
             ctxs[2].putImageData(currImageData, 0, 0);
 
             enableButtons();
+
+            var duration = +new Date() - start;
+            console.log('It took '+duration+'ms to reconstruct the image.');
         });
     });
 
     $s('#difference-btn').addEventListener('click', function() {
+        var start = +new Date();
+
+        //placed in a callback so the UI has a chance to update
         disableButtons(function() {
             //draw the pixels
             var currImageData = ctxs[3].getImageData(0, 0, dims[0], dims[1]);
@@ -165,6 +184,9 @@ function initFourierImage() {
             ctxs[3].putImageData(currImageData, 0, 0);
 
             enableButtons();
+
+            var duration = +new Date() - start;
+            console.log('It took '+duration+'ms to compute the difference.');
         });
     });
 
