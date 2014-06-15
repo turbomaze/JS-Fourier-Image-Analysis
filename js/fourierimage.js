@@ -9,7 +9,7 @@
 /**********
  * config */
 var dims = [256, 256];
-var imageLoc = 'image.png'; //must have 'dims' dimensions
+var imageLoc = 'grace.png'; //must have 'dims' dimensions
 var cc = 9e-3; //contrast constant
 
 /*************
@@ -147,7 +147,7 @@ function initFourierImage() {
                 if (arguments.length === 0) return h_primes;
 
                 var idx = n*dims[0] + m;
-                return h_primes[idx];
+                return round(h_primes[idx], 2);
             };
 
             //draw the pixels
@@ -175,16 +175,28 @@ function initFourierImage() {
 
         //placed in a callback so the UI has a chance to update
         disableButtons(function() {
+            //find the range of the errors
+            var minError = Infinity;
+            var maxError = 0;
+            for (var n = 0; n < dims[1]; n++) {
+                for (var m = 0; m < dims[0]; m++) {
+                    var error = h_(n, m) - h(n, m);
+                    if (error < minError) minError = error;
+                    if (error > maxError) maxError = error;
+                }
+            }
+
             //draw the pixels
             var currImageData = ctxs[3].getImageData(0, 0, dims[0], dims[1]);
             for (var n = 0; n < dims[1]; n++) {
                 for (var m = 0; m < dims[0]; m++) {
                     var idxInPixels = 4*(dims[0]*n + m); //idx in the pixels array
+                    var error = h_(n, m) - h(n, m);
+                    var color = getCoolColor(error, [minError, maxError]);
                     for (var c = 0; c < 3; c++) {
-                        currImageData.data[idxInPixels+c] = 0;
+                        currImageData.data[idxInPixels+c] = color[c];
                     }
-                    var error = Math.ceil(Math.abs(h_(n, m) - h(n, m)));
-                    currImageData.data[idxInPixels+3] = error; //alpha		
+                    currImageData.data[idxInPixels+3] = 255; // fullalpha		
                 }
             }
             ctxs[3].putImageData(currImageData, 0, 0);
@@ -333,6 +345,39 @@ function getPixelsFromImage(location, callback) {
 	img.src = location; //load the image
 }
 
+function getCoolColor(n, range) {
+    if (n === range[0] && range[0] === range[1]) {
+        return getCoolColor(2*n, [n-1, 2*n+1]);
+    }
+
+	var raw = [1.0, 1.0, 1.0]; //white
+
+	if (n < range[0]) n = range[0];
+	if (n > range[1]) n = range[1];
+	var dn = range[1] - range[0];
+
+	if (n < (range[0] + 0.25 * dn)) {
+		raw[0] = 0;
+		raw[1] = 4 * (n - range[0]) / dn;
+	} else if (n < (range[0] + 0.5 * dn)) {
+		raw[0] = 0;
+		raw[2] = 1 + 4 * (range[0] + 0.25 * dn - n) / dn;
+	} else if (n < (range[0] + 0.75 * dn)) {
+		raw[0] = 4 * (n - range[0] - 0.5 * dn) / dn;
+		raw[2] = 0;
+	} else {
+		raw[1] = 1 + 4 * (range[0] + 0.75 * dn - n) / dn;
+		raw[2] = 0;
+	}
+	
+	var color = [
+        tightMap(raw[0], 0, 1, 0, 255),
+        tightMap(raw[1], 0, 1, 0, 255),
+        tightMap(raw[2], 0, 1, 0, 255)
+    ];
+	return color;
+}
+
 function disableButtons(callback) {
     $s('#draw-btn').disabled = true;
     $s('#transform-btn').disabled = true;
@@ -361,6 +406,20 @@ function getRandInt(low, high) { //output is in [low, high)
 function round(n, places) {
     var mult = Math.pow(10, places);
     return Math.round(mult*n)/mult;
+}
+
+function tightMap(n, d1, d2, r1, r2) { //enforces boundaries
+	var raw = map(n, d1, d2, r1, r2);
+	if (raw < r1) return r1;
+	else if (raw > r2) return r2;
+	else return raw;
+}
+
+//given an n in [d1, d2], return a linearly related number in [r1, r2]
+function map(n, d1, d2, r1, r2) {
+	var Rd = d2-d1;
+	var Rr = r2-r1;
+	return (Rr/Rd)*(n - d1) + r1;
 }
 
 /***********
