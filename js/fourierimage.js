@@ -8,8 +8,9 @@
 
 /**********
  * config */
-var dims = [64, 64];
-var imageLoc = 'small.png'; //must have 'dims' dimensions
+var dims = [128, 128];
+var imageLoc = 'image.png'; //must have 'dims' dimensions
+var cc = 0.01; //contrast constant
 
 /*************
  * constants */
@@ -70,7 +71,10 @@ function initFourierImage() {
         disableButtons(function() {
             //compute the h hat values
             var h_hats = [];
-            FFT(h_hats, 0, h(), 0, h().length, 1);
+            FFT(h_hats, h());
+            h_hats = shiftFFT(h_hats);
+
+            //get the largest magnitude
             var maxMagnitude = 0;
             for (var ai = 0; ai < h_hats.length; ai++) {
                 var mag = h_hats[ai].magnitude();
@@ -78,25 +82,6 @@ function initFourierImage() {
                     maxMagnitude = mag;
                 }
             }
-/*
-            
-            for (var k = 0; k < dims[1]; k++) {
-                var wk = 2*Math.PI*(k/dims[1]) - Math.PI;
-                for (var l = 0; l < dims[0]; l++) {
-                    var wl = 2*Math.PI*(l/dims[0]) - Math.PI;
-                    var accum = new Complex(0, 0);
-                    for (var n = 0; n < dims[1]; n++) {
-                        for (var m = 0; m < dims[0]; m++) {
-                            var val = cisExp(-(wk*n + wl*m)).times(h(n, m));
-                            accum = accum.plus(val);
-                        }
-                    }
-                    var mag = accum.magnitude();
-                    if (mag > maxMagnitude) maxMagnitude = mag;
-                    h_hats.push(accum);
-                }
-            }
-*/
 
             //store them in a nice function to match the math
             $h = function(k, l) {
@@ -108,13 +93,13 @@ function initFourierImage() {
 
             //draw the pixels
             var currImageData = ctxs[1].getImageData(0, 0, dims[0], dims[1]);
-            var logOfMaxMag = Math.log(maxMagnitude+1);
+            var logOfMaxMag = Math.log(cc*maxMagnitude+1);
             for (var k = 0; k < dims[1]; k++) {
                 for (var l = 0; l < dims[0]; l++) {
                     var idxInPixels = 4*(dims[0]*k + l);
                     currImageData.data[idxInPixels+3] = 255; //full alpha
-                    var color = Math.log($h(k, l).magnitude() + 1);
-                    color = Math.round(255*(color/logOfMaxMag));
+                    var color = Math.log(cc*$h(k, l).magnitude()+1);
+                        color = Math.round(255*(color/logOfMaxMag));
                     for (var c = 0; c < 3; c++) { //RGB are the same, lol c++
                         currImageData.data[idxInPixels+c] = color;
                     }
@@ -136,11 +121,9 @@ function initFourierImage() {
         disableButtons(function() {
             //compute the h prime values
             var h_primes = [];
-            invFFT(h_primes, 0, $h(), 0, $h().length, 1);
-            var NM = dims[1]*dims[0];
-            for (var ai = 0; ai < h_primes.length; ai++) {
-                h_primes[ai] = Math.round(h_primes[ai].real/NM);
-            }
+            var h_hats = $h();
+            h_hats = shiftFFT(h_hats); //undoes itself
+            invFFT(h_primes, h_hats);
 
             //store them in a nice function to match the math
             h_ = function(n, m) {
@@ -206,12 +189,15 @@ function initFourierImage() {
     h = $h = h_ = function() { return 0; };
 }
 
-function FFT(out, start, sig, offset, N, s) {
+function FFT(out, sig) {
+    rec_FFT(out, 0, sig, 0, sig.length, 1);
+}
+function rec_FFT(out, start, sig, offset, N, s) {
     if (N === 1) {
         out[start] = new Complex(sig[offset], 0); //array
     } else {
-        FFT(out, start, sig, offset, N/2, 2*s);
-        FFT(out, start+N/2, sig, offset+s, N/2, 2*s);
+        rec_FFT(out, start, sig, offset, N/2, 2*s);
+        rec_FFT(out, start+N/2, sig, offset+s, N/2, 2*s);
         for (var k = 0; k < N/2; k++) {
             var twiddle = cisExp(-2*Math.PI*k/N);
             var t = out[start+k];
@@ -220,13 +206,42 @@ function FFT(out, start, sig, offset, N, s) {
         }
     }
 }
+function shiftFFT(transform) {
+    return halfShiftFFT(halfShiftFFT(transform));
+}
+function halfShiftFFT(transform) {
+    var ret = [];
+    var N = dims[1];
+    var M = dims[0];
+    for (var n = 0, vOff = N/2; n < N; n++) {
+        for (var m = 0; m < M/2; m++) {
+            var idx = vOff*dims[0] + m;
+            ret.push(transform[idx]);
+        }
+        vOff += vOff >= N/2 ? -N/2 : (N/2)+1;
+    }
+    for (var n = 0, vOff = N/2; n < N; n++) {
+        for (var m = M/2; m < M; m++) {
+            var idx = vOff*dims[0] + m;
+            ret.push(transform[idx]);
+        }
+        vOff += vOff >= N/2 ? -N/2 : (N/2)+1;
+    }
+    return ret;
+}
 
-function invFFT(sig, start, transform, offset, N, s) {
+function invFFT(sig, transform) {
+    rec_invFFT(sig, 0, transform, 0, transform.length, 1);
+    for (var ai = 0; ai < sig.length; ai++) {
+        sig[ai] = sig[ai].real/sig.length;
+    }
+}
+function rec_invFFT(sig, start, transform, offset, N, s) {
     if (N === 1) {
         sig[start] = transform[offset];
     } else {
-        invFFT(sig, start, transform, offset, N/2, 2*s);
-        invFFT(sig, start+N/2, transform, offset+s, N/2, 2*s);
+        rec_invFFT(sig, start, transform, offset, N/2, 2*s);
+        rec_invFFT(sig, start+N/2, transform, offset+s, N/2, 2*s);
         for (var k = 0; k < N/2; k++) {
             var twiddle = cisExp(2*Math.PI*k/N);
             var t = sig[start+k];
