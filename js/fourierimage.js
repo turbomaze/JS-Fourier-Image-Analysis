@@ -65,6 +65,8 @@ function initFourierImage() {
     $s('#transform-btn').addEventListener('click', function() {
         var start = +new Date();
 
+        if (!h()) return alert('You need to draw an image to canvas 1 first.');
+
         //placed in a callback so the UI has a chance to update
         disableButtons(function() {
             //compute the h hat values
@@ -83,7 +85,7 @@ function initFourierImage() {
 
             //apply a low or high pass filter
             var lpr = parseInt($s('#low-freq-radius').value); //low pass radius
-            var hpr = parseInt($s('#high-freq-radius').value); //low pass radius
+            var hpr = parseInt($s('#high-freq-radius').value); //high " "
             var N = dims[1], M = dims[0];
             for (var k = 0; k < N; k++) {
                 for (var l = 0; l < M; l++) {
@@ -132,6 +134,10 @@ function initFourierImage() {
     $s('#reconstruct-btn').addEventListener('click', function() {
         var start = +new Date();
 
+        if (!$h()) {
+            return alert('You first need to compute the Fourier transform.');
+        }
+
         //placed in a callback so the UI has a chance to update
         disableButtons(function() {
             //compute the h prime values
@@ -171,6 +177,10 @@ function initFourierImage() {
     $s('#difference-btn').addEventListener('click', function() {
         var start = +new Date();
 
+        if (!h_()) {
+            return alert('You haven\'t reconstructed an image yet.');
+        }
+
         //placed in a callback so the UI has a chance to update
         disableButtons(function() {
             //find the range of the errors
@@ -208,7 +218,7 @@ function initFourierImage() {
 
     //initialize the working variables
     canvases = [], ctxs = [];
-    h = $h = h_ = function() { return 0; };
+    h = $h = h_ = function() { return false; };
 
     var img = new Image();
     img.addEventListener('load', function() {
