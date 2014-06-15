@@ -408,6 +408,7 @@ function disableButtons(callback) {
     $s('#draw-cs-btn').disabled = true;
     $s('#draw-circle-btn').disabled = true;
     $s('#draw-grace-btn').disabled = true;
+    $s('#draw-img-btn').disabled = true;
     $s('#transform-btn').disabled = true;
     $s('#reconstruct-btn').disabled = true;
     $s('#difference-btn').disabled = true;
@@ -419,6 +420,7 @@ function enableButtons() {
     $s('#draw-cs-btn').disabled = false;
     $s('#draw-circle-btn').disabled = false;
     $s('#draw-grace-btn').disabled = false;
+    $s('#draw-img-btn').disabled = false;
     $s('#transform-btn').disabled = false;
     $s('#reconstruct-btn').disabled = false;
     $s('#difference-btn').disabled = false;
