@@ -8,7 +8,7 @@
 
 /**********
  * config */
-var dims = [54, 54];
+var dims = [64, 64];
 var imageLoc = 'small.png'; //must have 'dims' dimensions
 
 /*************
@@ -46,6 +46,8 @@ function initFourierImage() {
 
                 //initialize the h values
                 h = function(n, m) {
+                    if (arguments.length === 0) return h_es;
+
                     var idx = n*dims[0] + m;
                     return h_es[idx];
                 }; //create it in function form to make the code match the math
@@ -68,7 +70,16 @@ function initFourierImage() {
         disableButtons(function() {
             //compute the h hat values
             var h_hats = [];
+            FFT(h_hats, 0, h(), 0, h().length, 1);
             var maxMagnitude = 0;
+            for (var ai = 0; ai < h_hats.length; ai++) {
+                var mag = h_hats[ai].magnitude();
+                if (mag > maxMagnitude) {
+                    maxMagnitude = mag;
+                }
+            }
+/*
+            
             for (var k = 0; k < dims[1]; k++) {
                 var wk = 2*Math.PI*(k/dims[1]) - Math.PI;
                 for (var l = 0; l < dims[0]; l++) {
@@ -85,9 +96,12 @@ function initFourierImage() {
                     h_hats.push(accum);
                 }
             }
+*/
 
             //store them in a nice function to match the math
             $h = function(k, l) {
+                if (arguments.length === 0) return h_hats;
+
                 var idx = k*dims[0] + l;
                 return h_hats[idx];
             };
@@ -122,24 +136,16 @@ function initFourierImage() {
         disableButtons(function() {
             //compute the h prime values
             var h_primes = [];
+            invFFT(h_primes, 0, $h(), 0, $h().length, 1);
             var NM = dims[1]*dims[0];
-            for (var n = 0; n < dims[1]; n++) {
-                for (var m = 0; m < dims[0]; m++) {
-                    var accum = new Complex(0, 0);
-                    for (var k = 0; k < dims[1]; k++) {
-                        var wk = 2*Math.PI*(k/dims[1]) - Math.PI;
-                        for (var l = 0; l < dims[0]; l++) {
-                            var wl = 2*Math.PI*(l/dims[0]) - Math.PI;
-                            var val = cisExp(wk*n + wl*m).times($h(k, l));
-                            accum = accum.plus(val);
-                        }
-                    }
-                    h_primes.push(Math.round(accum.times(1/NM).real));
-                }
+            for (var ai = 0; ai < h_primes.length; ai++) {
+                h_primes[ai] = Math.round(h_primes[ai].real/NM);
             }
 
             //store them in a nice function to match the math
             h_ = function(n, m) {
+                if (arguments.length === 0) return h_primes;
+
                 var idx = n*dims[0] + m;
                 return h_primes[idx];
             };
@@ -198,6 +204,36 @@ function initFourierImage() {
         ctxs[ai] = canvases[ai].getContext('2d');
     }
     h = $h = h_ = function() { return 0; };
+}
+
+function FFT(out, start, sig, offset, N, s) {
+    if (N === 1) {
+        out[start] = new Complex(sig[offset], 0); //array
+    } else {
+        FFT(out, start, sig, offset, N/2, 2*s);
+        FFT(out, start+N/2, sig, offset+s, N/2, 2*s);
+        for (var k = 0; k < N/2; k++) {
+            var twiddle = cisExp(-2*Math.PI*k/N);
+            var t = out[start+k];
+            out[start+k] = t.plus(twiddle.times(out[start+k+N/2]));
+            out[start+k+N/2] = t.minus(twiddle.times(out[start+k+N/2]));
+        }
+    }
+}
+
+function invFFT(sig, start, transform, offset, N, s) {
+    if (N === 1) {
+        sig[start] = transform[offset];
+    } else {
+        invFFT(sig, start, transform, offset, N/2, 2*s);
+        invFFT(sig, start+N/2, transform, offset+s, N/2, 2*s);
+        for (var k = 0; k < N/2; k++) {
+            var twiddle = cisExp(2*Math.PI*k/N);
+            var t = sig[start+k];
+            sig[start+k] = t.plus(twiddle.times(sig[start+k+N/2]));
+            sig[start+k+N/2] = t.minus(twiddle.times(sig[start+k+N/2]));
+        }
+    }
 }
 
 /********************
@@ -281,6 +317,9 @@ Complex.prototype.magnitude = function() {
 };
 Complex.prototype.plus = function(z) {
     return new Complex(this.real+z.real, this.imag+z.imag);
+};
+Complex.prototype.minus = function(z) {
+    return new Complex(this.real-z.real, this.imag-z.imag);
 };
 Complex.prototype.times = function(z) {
     if (typeof z === 'object') { //complex multiplication
