@@ -67,6 +67,7 @@ function initFourierImage() {
                 var duration = +new Date() - start;
                 console.log('It took '+duration+'ms to draw the image.');
             });
+            img.crossOrigin = "anonymous";
             img.src = loc;
         });
     }
@@ -79,6 +80,10 @@ function initFourierImage() {
     $s('#draw-grace-btn').addEventListener('click', function() {
         loadImage('grace.png');
     });
+    $s('#draw-img-btn').addEventListener('click', function() {
+        loadImage($s('#img-url').value);
+    });
+    
 
     $s('#transform-btn').addEventListener('click', function() {
         var start = +new Date();
