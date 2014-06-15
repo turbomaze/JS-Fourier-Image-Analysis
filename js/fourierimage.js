@@ -8,8 +8,8 @@
 
 /**********
  * config */
-var dims = [256, 256];
-var imageLoc = 'grace.png'; //must have 'dims' dimensions
+var dims = [-1, -1];
+var imageLoc = 'image.png'; //must have 'dims' dimensions
 var cc = 9e-3; //contrast constant
 
 /*************
@@ -58,8 +58,6 @@ function initFourierImage() {
                 var duration = +new Date() - start;
                 console.log('It took '+duration+'ms to draw the image.');
             });
-
-            //THE IMAGE DIMENSIONS MUST MATCH dims FOR THIS TO WORK!!!
             img.src = imageLoc;
         });
     });
@@ -210,12 +208,20 @@ function initFourierImage() {
 
     //initialize the working variables
     canvases = [], ctxs = [];
-    for (var ai = 0; ai < 4; ai++) {
-        canvases[ai] = $s('#canvas'+ai);
-        canvases[ai].width = dims[0], canvases[ai].height = dims[1];
-        ctxs[ai] = canvases[ai].getContext('2d');
-    }
     h = $h = h_ = function() { return 0; };
+
+    var img = new Image();
+    img.addEventListener('load', function() {
+        dims[0] = img.width;
+        dims[1] = img.height;
+
+        for (var ai = 0; ai < 4; ai++) {
+            canvases[ai] = $s('#canvas'+ai);
+            canvases[ai].width = dims[0], canvases[ai].height = dims[1];
+            ctxs[ai] = canvases[ai].getContext('2d');
+        }
+    });
+    img.src = imageLoc;
 }
 
 function FFT(out, sig) {
