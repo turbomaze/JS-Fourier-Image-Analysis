@@ -8,7 +8,7 @@
 
 /**********
  * config */
-var dims = [128, 128];
+var dims = [512, 512];
 var imageLoc = 'image.png'; //must have 'dims' dimensions
 var cc = 0.01; //contrast constant
 
@@ -207,7 +207,21 @@ function rec_FFT(out, start, sig, offset, N, s) {
     }
 }
 function shiftFFT(transform) {
-    return halfShiftFFT(halfShiftFFT(transform));
+    var partial = halfShiftFFT(halfShiftFFT(transform));
+    var ret = [];
+
+    //flip the right half of the image across the x axis
+    var N = dims[1];
+    var M = dims[0];
+    for (var n = 0; n < N; n++) {
+        for (var m = 0; m < M; m++) {
+            var $n = m < M/2 ? n : (N-1)-n;
+            var idx = $n*dims[0] + m;
+            ret.push(partial[idx]);
+        }
+    }
+
+    return ret;
 }
 function halfShiftFFT(transform) {
     var ret = [];
