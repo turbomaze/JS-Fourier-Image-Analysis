@@ -8,9 +8,9 @@
 
 /**********
  * config */
-var dims = [512, 512];
+var dims = [256, 256];
 var imageLoc = 'image.png'; //must have 'dims' dimensions
-var cc = 0.01; //contrast constant
+var cc = 9e-3; //contrast constant
 
 /*************
  * constants */
@@ -83,10 +83,27 @@ function initFourierImage() {
                 }
             }
 
+            //apply a low or high pass filter
+            var lpr = parseInt($s('#low-freq-radius').value); //low pass radius
+            var hpr = parseInt($s('#high-freq-radius').value); //low pass radius
+            var N = dims[1], M = dims[0];
+            for (var k = 0; k < N; k++) {
+                for (var l = 0; l < M; l++) {
+                    var idx = k*M + l;
+                    var dist = Math.pow(k-M/2, 2) + Math.pow(l-N/2, 2);
+                    if (dist > lpr*lpr && isNaN(hpr) ||
+                        dist < hpr*hpr && isNaN(lpr) ||
+                        dist < lpr*lpr && !isNaN(lpr) && !isNaN(hpr) ||
+                        dist > hpr*hpr && !isNaN(hpr) && !isNaN(hpr)) {
+                        h_hats[idx] = new Complex(0, 0);
+                    }
+                }
+            }
+
             //store them in a nice function to match the math
             $h = function(k, l) {
                 if (arguments.length === 0) return h_hats;
-
+ 
                 var idx = k*dims[0] + l;
                 return h_hats[idx];
             };
@@ -206,10 +223,39 @@ function rec_FFT(out, start, sig, offset, N, s) {
         }
     }
 }
+
+function invFFT(sig, transform) {
+    rec_invFFT(sig, 0, transform, 0, transform.length, 1);
+    for (var ai = 0; ai < sig.length; ai++) {
+        sig[ai] = sig[ai].real/sig.length;
+    }
+}
+function rec_invFFT(sig, start, transform, offset, N, s) {
+    if (N === 1) {
+        sig[start] = transform[offset];
+    } else {
+        rec_invFFT(sig, start, transform, offset, N/2, 2*s);
+        rec_invFFT(sig, start+N/2, transform, offset+s, N/2, 2*s);
+        for (var k = 0; k < N/2; k++) {
+            var twiddle = cisExp(2*Math.PI*k/N);
+            var t = sig[start+k];
+            sig[start+k] = t.plus(twiddle.times(sig[start+k+N/2]));
+            sig[start+k+N/2] = t.minus(twiddle.times(sig[start+k+N/2]));
+        }
+    }
+}
+
 function shiftFFT(transform) {
     return flipRightHalf(
         halfShiftFFT(
             halfShiftFFT(transform)
+        )
+    );
+}
+function unshiftFFT(transform) {
+    return halfShiftFFT(
+        halfShiftFFT(
+            flipRightHalf(transform)
         )
     );
 }
@@ -248,34 +294,6 @@ function flipRightHalf(transform) {
     }
 
     return ret;
-}
-
-function invFFT(sig, transform) {
-    rec_invFFT(sig, 0, transform, 0, transform.length, 1);
-    for (var ai = 0; ai < sig.length; ai++) {
-        sig[ai] = sig[ai].real/sig.length;
-    }
-}
-function rec_invFFT(sig, start, transform, offset, N, s) {
-    if (N === 1) {
-        sig[start] = transform[offset];
-    } else {
-        rec_invFFT(sig, start, transform, offset, N/2, 2*s);
-        rec_invFFT(sig, start+N/2, transform, offset+s, N/2, 2*s);
-        for (var k = 0; k < N/2; k++) {
-            var twiddle = cisExp(2*Math.PI*k/N);
-            var t = sig[start+k];
-            sig[start+k] = t.plus(twiddle.times(sig[start+k+N/2]));
-            sig[start+k+N/2] = t.minus(twiddle.times(sig[start+k+N/2]));
-        }
-    }
-}
-function unshiftFFT(transform) {
-    return halfShiftFFT(
-        halfShiftFFT(
-            flipRightHalf(transform)
-        )
-    );
 }
 
 /********************
