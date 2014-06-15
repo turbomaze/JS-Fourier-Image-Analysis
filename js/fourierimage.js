@@ -94,7 +94,7 @@ function initFourierImage() {
                     if (dist > lpr*lpr && isNaN(hpr) ||
                         dist < hpr*hpr && isNaN(lpr) ||
                         dist < lpr*lpr && !isNaN(lpr) && !isNaN(hpr) ||
-                        dist > hpr*hpr && !isNaN(hpr) && !isNaN(hpr)) {
+                        dist > hpr*hpr && !isNaN(lpr) && !isNaN(hpr)) {
                         h_hats[idx] = new Complex(0, 0);
                     }
                 }
