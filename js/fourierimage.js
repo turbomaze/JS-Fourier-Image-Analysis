@@ -8,8 +8,7 @@
 
 /**********
  * config */
-var dims = [-1, -1];
-var imageLoc = 'image.png'; //must have 'dims' dimensions
+var dims = [-1, -1]; //will be set later
 var cc = 9e-3; //contrast constant
 
 /*************
@@ -27,7 +26,7 @@ var h_; //h prime, the reconstructed h values
  * work functions */
 function initFourierImage() {
     //event listeners
-    $s('#draw-btn').addEventListener('click', function() {
+    function loadImage(loc) {
         var start = +new Date();
 
         //placed in a callback so the UI has a chance to update
@@ -35,6 +34,16 @@ function initFourierImage() {
             //draw the initial image
             var img = new Image();
             img.addEventListener('load', function() {
+                //make each canvas the image's exact size
+                dims[0] = img.width;
+                dims[1] = img.height;
+                for (var ai = 0; ai < 4; ai++) {
+                    canvases[ai] = $s('#canvas'+ai);
+                    canvases[ai].width = dims[0], canvases[ai].height = dims[1];
+                    ctxs[ai] = canvases[ai].getContext('2d');
+                }
+
+                //draw the image to the canvas
                 ctxs[0].drawImage(img, 0, 0, img.width, img.height);
 
                 //grab the pixels
@@ -58,8 +67,17 @@ function initFourierImage() {
                 var duration = +new Date() - start;
                 console.log('It took '+duration+'ms to draw the image.');
             });
-            img.src = imageLoc;
+            img.src = loc;
         });
+    }
+    $s('#draw-cs-btn').addEventListener('click', function() {
+        loadImage('cs.png');
+    });
+    $s('#draw-circle-btn').addEventListener('click', function() {
+        loadImage('circle.png');
+    });
+    $s('#draw-grace-btn').addEventListener('click', function() {
+        loadImage('grace.png');
     });
 
     $s('#transform-btn').addEventListener('click', function() {
@@ -219,19 +237,6 @@ function initFourierImage() {
     //initialize the working variables
     canvases = [], ctxs = [];
     h = $h = h_ = function() { return false; };
-
-    var img = new Image();
-    img.addEventListener('load', function() {
-        dims[0] = img.width;
-        dims[1] = img.height;
-
-        for (var ai = 0; ai < 4; ai++) {
-            canvases[ai] = $s('#canvas'+ai);
-            canvases[ai].width = dims[0], canvases[ai].height = dims[1];
-            ctxs[ai] = canvases[ai].getContext('2d');
-        }
-    });
-    img.src = imageLoc;
 }
 
 function FFT(out, sig) {
@@ -395,7 +400,9 @@ function getCoolColor(n, range) {
 }
 
 function disableButtons(callback) {
-    $s('#draw-btn').disabled = true;
+    $s('#draw-cs-btn').disabled = true;
+    $s('#draw-circle-btn').disabled = true;
+    $s('#draw-grace-btn').disabled = true;
     $s('#transform-btn').disabled = true;
     $s('#reconstruct-btn').disabled = true;
     $s('#difference-btn').disabled = true;
@@ -404,7 +411,9 @@ function disableButtons(callback) {
 }
 
 function enableButtons() {
-    $s('#draw-btn').disabled = false;
+    $s('#draw-cs-btn').disabled = false;
+    $s('#draw-circle-btn').disabled = false;
+    $s('#draw-grace-btn').disabled = false;
     $s('#transform-btn').disabled = false;
     $s('#reconstruct-btn').disabled = false;
     $s('#difference-btn').disabled = false;
