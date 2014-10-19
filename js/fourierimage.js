@@ -1,7 +1,7 @@
 /******************\
 |   Fourier Image  |
 | @author Anthony  |
-| @version 1.0.1   |
+| @version 1.0.2   |
 | @date 2014/06/14 |
 | @edit 2014/06/15 |
 \******************/
