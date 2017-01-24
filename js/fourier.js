@@ -30,7 +30,7 @@ var Fourier = (function() {
     }
   }
 
-  function FFT(out, sig) {
+  function FFT(sig, out) {
     rec_FFT(out, 0, sig, 0, sig.length, 1);
   }
 
@@ -51,7 +51,7 @@ var Fourier = (function() {
     }
   }
   
-  function invFFT(sig, transform) {
+  function invFFT(transform, sig) {
     rec_invFFT(sig, 0, transform, 0, transform.length, 1);
     for (var ai = 0; ai < sig.length; ai++) {
       sig[ai] = sig[ai].real/sig.length;

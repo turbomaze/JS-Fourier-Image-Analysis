@@ -136,7 +136,7 @@ var FourierImageAnalysis = (function() {
   function transformAction() {
     // compute the h hat values
     var h_hats = [];
-    Fourier.transform(h_hats, h());
+    Fourier.transform(h(), h_hats);
     h_hats = Fourier.shift(h_hats, dims);
  
     // get the largest magnitude
@@ -195,7 +195,7 @@ var FourierImageAnalysis = (function() {
     var h_primes = [];
     var h_hats = $h();
     h_hats = Fourier.unshift(h_hats, dims);
-    Fourier.invert(h_primes, h_hats);
+    Fourier.invert(h_hats, h_primes);
  
     // store them in a nice function to match the math
     h_ = function(n, m) {
