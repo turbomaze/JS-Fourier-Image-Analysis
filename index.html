@@ -4,7 +4,8 @@
         <meta charset="UTF-8">
         <title>Image Fourier Transform</title>
 
-        <script src="js/fourierimage.js"></script>
+        <script src="js/fourier.js"></script>
+        <script src="js/main.js"></script>
     </head>
     <body>
         <h1>Image Fourier Transform</h1>
@@ -16,10 +17,12 @@
                 <canvas id="canvas0"></canvas>
                 <br>
                 <input type="button" id="draw-cs-btn" value="Draw 'CS'">
-                <br>
                 <input type="button" id="draw-circle-btn" value="Draw circle">
                 <br>
                 <input type="button" id="draw-grace-btn" value="Draw Grace Helbig">
+                <br>
+                <input type="text" id="img-url" placeholder="Image url">
+                <input type="button" id="draw-img-btn" value="Draw">
             </div>
             <div style="display: inline-block; vertical-align: top">
                 2. Fourier image (log of magnitude)
