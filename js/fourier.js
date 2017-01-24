@@ -9,6 +9,27 @@
 var Fourier = (function() {
   /******************
    * work functions */
+  function filter(data, dims, lowPass, highPass) {
+    var lowPassSq = Math.pow(lowPass, 2);
+    var highPassSq = Math.pow(highPass, 2);
+    var N = dims[1];
+    var M = dims[0];
+    for (var k = 0; k < N; k++) {
+      for (var l = 0; l < M; l++) {
+        var idx = k*M + l;
+        var d = Math.pow(k-M/2, 2) + Math.pow(l-N/2, 2);
+        if (
+          d > lowPassSq && isNaN(highPass) ||
+          d < highPassSq && isNaN(lowPass) ||
+          d < lowPassSq && !isNaN(lowPass) && !isNaN(highPass) ||
+          d > highPassSq && !isNaN(lowPass) && !isNaN(highPass)
+        ) {
+          data[idx] = new Fourier.Complex(0, 0);
+        }
+      }
+    }
+  }
+
   function FFT(out, sig) {
     rec_FFT(out, 0, sig, 0, sig.length, 1);
   }
@@ -157,6 +178,7 @@ var Fourier = (function() {
     transform: FFT,
     invert: invFFT,
     shift: shiftFFT,
-    unshift: unshiftFFT
+    unshift: unshiftFFT,
+    filter: filter
   };
 })();

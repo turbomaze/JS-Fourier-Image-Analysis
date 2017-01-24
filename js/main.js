@@ -149,26 +149,13 @@ var FourierImageAnalysis = (function() {
     }
  
     // apply a low or high pass filter
-    var lpr = parseInt(
+    var lowPassRadius = parseInt(
       $s('#low-freq-radius').value
     ); // low pass radius
-    var hpr = parseInt(
+    var highPassRadius= parseInt(
       $s('#high-freq-radius').value
     ); // high pass radius
-    var N = dims[1];
-    var M = dims[0];
-    for (var k = 0; k < N; k++) {
-      for (var l = 0; l < M; l++) {
-        var idx = k*M + l;
-        var dist = Math.pow(k-M/2, 2) + Math.pow(l-N/2, 2);
-        if (dist > lpr*lpr && isNaN(hpr) ||
-          dist < hpr*hpr && isNaN(lpr) ||
-          dist < lpr*lpr && !isNaN(lpr) && !isNaN(hpr) ||
-          dist > hpr*hpr && !isNaN(lpr) && !isNaN(hpr)) {
-          h_hats[idx] = new Fourier.Complex(0, 0);
-        }
-      }
-    }
+    Fourier.filter(h_hats, dims, lowPassRadius, highPassRadius);
  
     // store them in a nice function to match the math
     $h = function(k, l) {
@@ -189,8 +176,8 @@ var FourierImageAnalysis = (function() {
         currImageData.data[idxInPixels+3] = 255; // full alpha
         var color = Math.log(cc*$h(k, l).magnitude()+1);
         color = Math.round(255*(color/logOfMaxMag));
-        // RGB are the same, lol c++
-        for (var c = 0; c < 3; c++) { 
+        // RGB are the same -> gray
+        for (var c = 0; c < 3; c++) { // lol c++
           currImageData.data[idxInPixels+c] = color;
         }
       }
