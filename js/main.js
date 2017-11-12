@@ -174,7 +174,7 @@ var FourierImageAnalysis = (function() {
       for (var l = 0; l < dims[0]; l++) {
         var idxInPixels = 4*(dims[0]*k + l);
         currImageData.data[idxInPixels+3] = 255; // full alpha
-        var color = Math.log(cc*$h(k, l).magnitude()+1);
+        var color = Math.log(cc*$h(l, k).magnitude()+1);
         color = Math.round(255*(color/logOfMaxMag));
         // RGB are the same -> gray
         for (var c = 0; c < 3; c++) { // lol c++
