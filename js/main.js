@@ -1,9 +1,9 @@
 /******************\
 |   Fourier Image  |
 | @author Anthony  |
-| @version 1.1.0   |
+| @version 1.1.1   |
 | @date 2014/06/14 |
-| @edit 2017/01/23 |
+| @edit 2017/11/11 |
 \******************/
 
 var FourierImageAnalysis = (function() {
