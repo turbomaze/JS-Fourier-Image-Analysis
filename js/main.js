@@ -1,9 +1,9 @@
 /******************\
 |   Fourier Image  |
 | @author Anthony  |
-| @version 1.1.0   |
+| @version 1.1.1   |
 | @date 2014/06/14 |
-| @edit 2017/01/23 |
+| @edit 2017/11/11 |
 \******************/
 
 var FourierImageAnalysis = (function() {
@@ -174,7 +174,7 @@ var FourierImageAnalysis = (function() {
       for (var l = 0; l < dims[0]; l++) {
         var idxInPixels = 4*(dims[0]*k + l);
         currImageData.data[idxInPixels+3] = 255; // full alpha
-        var color = Math.log(cc*$h(k, l).magnitude()+1);
+        var color = Math.log(cc*$h(l, k).magnitude()+1);
         color = Math.round(255*(color/logOfMaxMag));
         // RGB are the same -> gray
         for (var c = 0; c < 3; c++) { // lol c++
