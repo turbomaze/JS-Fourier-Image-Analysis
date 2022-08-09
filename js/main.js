@@ -89,38 +89,47 @@ var FourierImageAnalysis = (function() {
     disableButtons(function() {
       // draw the initial image
       var img = new Image();
+      img.addEventListener('error', function() {
+        $s('#errfield').innerHTML = "Unable to load image " + loc;
+        enableButtons();
+      });
       img.addEventListener('load', function() {
-        // make each canvas the image's exact size
-        dims[0] = img.width;
-        dims[1] = img.height;
-        for (var ai = 0; ai < 4; ai++) {
-          canvases[ai] = $s('#canvas'+ai);
-          canvases[ai].width = dims[0];
-          canvases[ai].height = dims[1];
-          ctxs[ai] = canvases[ai].getContext('2d');
+        try {
+          // make each canvas the image's exact size
+          dims[0] = img.width;
+          dims[1] = img.height;
+          for (var ai = 0; ai < 4; ai++) {
+            canvases[ai] = $s('#canvas'+ai);
+            canvases[ai].width = dims[0];
+            canvases[ai].height = dims[1];
+            ctxs[ai] = canvases[ai].getContext('2d');
+          }
+  
+          // draw the image to the canvas
+          ctxs[0].drawImage(img, 0, 0, img.width, img.height);
+  
+          // grab the pixels
+          var imageData = ctxs[0].getImageData(
+            0, 0, dims[0], dims[1]
+          );
+          var h_es = []; // the h values
+          for (var ai = 0; ai < imageData.data.length; ai+=4) {
+            // greyscale, so you only need every 4th value
+            h_es.push(imageData.data[ai]);
+          }
+  
+          // initialize the h values
+          h = function(n, m) {
+            if (arguments.length === 0) return h_es;
+  
+            var idx = n*dims[0] + m;
+            return h_es[idx];
+          }; // make it a function so the code matches the math
+          $s('#errfield').innerHTML = "";
+        } catch (e) {
+          $s('#errfield').innerHTML = e.message;
         }
- 
-        // draw the image to the canvas
-        ctxs[0].drawImage(img, 0, 0, img.width, img.height);
- 
-        // grab the pixels
-        var imageData = ctxs[0].getImageData(
-          0, 0, dims[0], dims[1]
-        );
-        var h_es = []; // the h values
-        for (var ai = 0; ai < imageData.data.length; ai+=4) {
-          // greyscale, so you only need every 4th value
-          h_es.push(imageData.data[ai]);
-        }
- 
-        // initialize the h values
-        h = function(n, m) {
-          if (arguments.length === 0) return h_es;
- 
-          var idx = n*dims[0] + m;
-          return h_es[idx];
-        }; // make it a function so the code matches the math
- 
+  
         enableButtons();
  
         var duration = +new Date() - start;
@@ -134,56 +143,62 @@ var FourierImageAnalysis = (function() {
   }
   
   function transformAction() {
-    // compute the h hat values
-    var h_hats = [];
-    Fourier.transform(h(), h_hats);
-    h_hats = Fourier.shift(h_hats, dims);
- 
-    // get the largest magnitude
-    var maxMagnitude = 0;
-    for (var ai = 0; ai < h_hats.length; ai++) {
-      var mag = h_hats[ai].magnitude();
-      if (mag > maxMagnitude) {
-        maxMagnitude = mag;
-      }
-    }
- 
-    // apply a low or high pass filter
-    var lowPassRadius = parseInt(
-      $s('#low-freq-radius').value
-    ); // low pass radius
-    var highPassRadius= parseInt(
-      $s('#high-freq-radius').value
-    ); // high pass radius
-    Fourier.filter(h_hats, dims, lowPassRadius, highPassRadius);
- 
-    // store them in a nice function to match the math
-    $h = function(k, l) {
-      if (arguments.length === 0) return h_hats;
+    var start = +new Date();
+    try {
+      // compute the h hat values
+      var h_hats = [];
+      Fourier.transform(h(), h_hats);
+      h_hats = Fourier.shift(h_hats, dims);
   
-      var idx = k*dims[0] + l;
-      return h_hats[idx];
-    };
- 
-    // draw the pixels
-    var currImageData = ctxs[1].getImageData(
-      0, 0, dims[0], dims[1]
-    );
-    var logOfMaxMag = Math.log(cc*maxMagnitude+1);
-    for (var k = 0; k < dims[1]; k++) {
-      for (var l = 0; l < dims[0]; l++) {
-        var idxInPixels = 4*(dims[0]*k + l);
-        currImageData.data[idxInPixels+3] = 255; // full alpha
-        var color = Math.log(cc*$h(l, k).magnitude()+1);
-        color = Math.round(255*(color/logOfMaxMag));
-        // RGB are the same -> gray
-        for (var c = 0; c < 3; c++) { // lol c++
-          currImageData.data[idxInPixels+c] = color;
+      // get the largest magnitude
+      var maxMagnitude = 0;
+      for (var ai = 0; ai < h_hats.length; ai++) {
+        var mag = h_hats[ai].magnitude();
+        if (mag > maxMagnitude) {
+          maxMagnitude = mag;
         }
       }
+  
+      // apply a low or high pass filter
+      var lowPassRadius = parseInt(
+        $s('#low-freq-radius').value
+      ); // low pass radius
+      var highPassRadius= parseInt(
+        $s('#high-freq-radius').value
+      ); // high pass radius
+      Fourier.filter(h_hats, dims, lowPassRadius, highPassRadius);
+  
+      // store them in a nice function to match the math
+      $h = function(k, l) {
+        if (arguments.length === 0) return h_hats;
+    
+        var idx = k*dims[0] + l;
+        return h_hats[idx];
+      };
+  
+      // draw the pixels
+      var currImageData = ctxs[1].getImageData(
+        0, 0, dims[0], dims[1]
+      );
+      var logOfMaxMag = Math.log(cc*maxMagnitude+1);
+      for (var k = 0; k < dims[1]; k++) {
+        for (var l = 0; l < dims[0]; l++) {
+          var idxInPixels = 4*(dims[0]*k + l);
+          currImageData.data[idxInPixels+3] = 255; // full alpha
+          var color = Math.log(cc*$h(l, k).magnitude()+1);
+          color = Math.round(255*(color/logOfMaxMag));
+          // RGB are the same -> gray
+          for (var c = 0; c < 3; c++) { // lol c++
+            currImageData.data[idxInPixels+c] = color;
+          }
+        }
+      }
+      ctxs[1].putImageData(currImageData, 0, 0);
+
+      $s('#errfield').innerHTML = "";
+    } catch (e) {
+      $s('#errfield').innerHTML = e.message;
     }
-    ctxs[1].putImageData(currImageData, 0, 0);
- 
     enableButtons();
  
     var duration = +new Date() - start;
@@ -191,35 +206,41 @@ var FourierImageAnalysis = (function() {
   }
   
   function reconstructAction() {
-    // compute the h prime values
-    var h_primes = [];
-    var h_hats = $h();
-    h_hats = Fourier.unshift(h_hats, dims);
-    Fourier.invert(h_hats, h_primes);
- 
-    // store them in a nice function to match the math
-    h_ = function(n, m) {
-      if (arguments.length === 0) return h_primes;
- 
-      var idx = n*dims[0] + m;
-      return round(h_primes[idx], 2);
-    };
- 
-    // draw the pixels
-    var currImageData = ctxs[2].getImageData(
-      0, 0, dims[0], dims[1]
-    );
-    for (var n = 0; n < dims[1]; n++) {
-      for (var m = 0; m < dims[0]; m++) {
-        var idxInPixels = 4*(dims[0]*n + m);
-        currImageData.data[idxInPixels+3] = 255; // full alpha
-        for (var c = 0; c < 3; c++) { // RGB are the same, lol c++
-          currImageData.data[idxInPixels+c] = h_(n, m);
+    var start = +new Date();
+    try {
+      // compute the h prime values
+      var h_primes = [];
+      var h_hats = $h();
+      h_hats = Fourier.unshift(h_hats, dims);
+      Fourier.invert(h_hats, h_primes);
+  
+      // store them in a nice function to match the math
+      h_ = function(n, m) {
+        if (arguments.length === 0) return h_primes;
+  
+        var idx = n*dims[0] + m;
+        return round(h_primes[idx], 2);
+      };
+  
+      // draw the pixels
+      var currImageData = ctxs[2].getImageData(
+        0, 0, dims[0], dims[1]
+      );
+      for (var n = 0; n < dims[1]; n++) {
+        for (var m = 0; m < dims[0]; m++) {
+          var idxInPixels = 4*(dims[0]*n + m);
+          currImageData.data[idxInPixels+3] = 255; // full alpha
+          for (var c = 0; c < 3; c++) { // RGB are the same, lol c++
+            currImageData.data[idxInPixels+c] = h_(n, m);
+          }
         }
       }
+      ctxs[2].putImageData(currImageData, 0, 0);
+      $s('#errfield').innerHTML = "";
+    } catch (e) {
+      $s('#errfield').innerHTML = e.message;
     }
-    ctxs[2].putImageData(currImageData, 0, 0);
- 
+
     enableButtons();
  
     var duration = +new Date() - start;
@@ -229,36 +250,42 @@ var FourierImageAnalysis = (function() {
   }
   
   function differenceAction() {
-    // find the range of the errors
-    var minError = Infinity;
-    var maxError = 0;
-    for (var n = 0; n < dims[1]; n++) {
-      for (var m = 0; m < dims[0]; m++) {
-        var error = h_(n, m) - h(n, m);
-        if (error < minError) minError = error;
-        if (error > maxError) maxError = error;
-      }
-    }
- 
-    // draw the pixels
-    var currImageData = ctxs[3].getImageData(
-      0, 0, dims[0], dims[1]
-    );
-    for (var n = 0; n < dims[1]; n++) {
-      for (var m = 0; m < dims[0]; m++) {
-        var idxInPixels = 4*(dims[0]*n + m);
-        var error = h_(n, m) - h(n, m);
-        var color = getCoolColor(
-          error, [minError, maxError]
-        );
-        for (var c = 0; c < 3; c++) {
-          currImageData.data[idxInPixels+c] = color[c];
+    var start = +new Date();
+    try {
+      // find the range of the errors
+      var minError = Infinity;
+      var maxError = 0;
+      for (var n = 0; n < dims[1]; n++) {
+        for (var m = 0; m < dims[0]; m++) {
+          var error = h_(n, m) - h(n, m);
+          if (error < minError) minError = error;
+          if (error > maxError) maxError = error;
         }
-        currImageData.data[idxInPixels+3] = 255;
       }
+  
+      // draw the pixels
+      var currImageData = ctxs[3].getImageData(
+        0, 0, dims[0], dims[1]
+      );
+      for (var n = 0; n < dims[1]; n++) {
+        for (var m = 0; m < dims[0]; m++) {
+          var idxInPixels = 4*(dims[0]*n + m);
+          var error = h_(n, m) - h(n, m);
+          var color = getCoolColor(
+            error, [minError, maxError]
+          );
+          for (var c = 0; c < 3; c++) {
+            currImageData.data[idxInPixels+c] = color[c];
+          }
+          currImageData.data[idxInPixels+3] = 255;
+        }
+      }
+      ctxs[3].putImageData(currImageData, 0, 0);
+      $s('#errfield').innerHTML = "";
+    } catch (e) {
+      $s('#errfield').innerHTML = e.message;
     }
-    ctxs[3].putImageData(currImageData, 0, 0);
- 
+    
     enableButtons();
  
     var duration = +new Date() - start;
