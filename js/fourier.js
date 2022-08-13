@@ -31,15 +31,27 @@ var Fourier = (function() {
   }
 
   function FFT(sig, out) {
-    rec_FFT(out, 0, sig, 0, sig.length, 1);
+    if (sig.length === 0) {
+      var e = new Error("Cannot transform an image with size of zero.");
+      e.name = RangeError;
+      e.givenLength = sig.length;
+      throw e;
+    }
+    if (sig.length & (sig.length - 1)) {
+      var e = new Error("Unimplemented: Only FFT of signals of length power of 2 supported by this implementation. Given: " + sig.length);
+      e.name = RangeError;
+      e.givenLength = sig.length;
+      throw e;
+    }
+    rec_FFT_radix2(out, 0, sig, 0, sig.length, 1, 2);
   }
 
-  function rec_FFT(out, start, sig, offset, N, s) {
+  function rec_FFT_radix2(out, start, sig, offset, N, s) {
     if (N === 1) {
       out[start] = new Complex(sig[offset], 0); // array
     } else {
-      rec_FFT(out, start, sig, offset, N/2, 2*s);
-      rec_FFT(out, start+N/2, sig, offset+s, N/2, 2*s);
+      rec_FFT_radix2(out, start, sig, offset, N/2, 2*s);
+      rec_FFT_radix2(out, start+N/2, sig, offset+s, N/2, 2*s);
       for (var k = 0; k < N/2; k++) {
         var twiddle = cisExp(-2*Math.PI*k/N);
         var t = out[start+k];
@@ -50,20 +62,32 @@ var Fourier = (function() {
       }
     }
   }
-  
+
   function invFFT(transform, sig) {
-    rec_invFFT(sig, 0, transform, 0, transform.length, 1);
+    if (transform.length === 0) {
+      var e = new Error("Cannot transform an image with size of zero.");
+      e.name = RangeError;
+      e.givenLength = transform.length;
+      throw e;
+    }
+    if (transform.length & (transform.length - 1)) {
+      var e = new Error("Unimplemented: Only FFT of signals of length power of 2 supported by this implementation. Given: " + transform.length);
+      e.name = RangeError;
+      e.givenLength = transform.length;
+      throw e;
+    }
+    rec_invFFT_radix2(sig, 0, transform, 0, transform.length, 1);
     for (var ai = 0; ai < sig.length; ai++) {
       sig[ai] = sig[ai].real/sig.length;
     }
   }
 
-  function rec_invFFT(sig, start, transform, offset, N, s) {
+  function rec_invFFT_radix2(sig, start, transform, offset, N, s) {
     if (N === 1) {
       sig[start] = transform[offset];
     } else {
-      rec_invFFT(sig, start, transform, offset, N/2, 2*s);
-      rec_invFFT(sig, start+N/2, transform, offset+s, N/2, 2*s);
+      rec_invFFT_radix2(sig, start, transform, offset, N/2, 2*s);
+      rec_invFFT_radix2(sig, start+N/2, transform, offset+s, N/2, 2*s);
       for (var k = 0; k < N/2; k++) {
         var twiddle = cisExp(2*Math.PI*k/N);
         var t = sig[start+k];
