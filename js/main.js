@@ -149,6 +149,7 @@ var FourierImageAnalysis = (function() {
       var h_hats = [];
       Fourier.transform(h(), h_hats);
       h_hats = Fourier.shift(h_hats, dims);
+
   
       // get the largest magnitude
       var maxMagnitude = 0;
@@ -262,6 +263,7 @@ var FourierImageAnalysis = (function() {
           if (error > maxError) maxError = error;
         }
       }
+
   
       // draw the pixels
       var currImageData = ctxs[3].getImageData(
