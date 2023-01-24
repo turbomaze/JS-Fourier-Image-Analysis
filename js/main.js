@@ -149,6 +149,7 @@ var FourierImageAnalysis = (function() {
       var h_hats = [];
       Fourier.transform(h(), h_hats);
       h_hats = Fourier.shift(h_hats, dims);
+
   
       // get the largest magnitude
       var maxMagnitude = 0;

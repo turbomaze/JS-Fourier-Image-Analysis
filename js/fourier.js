@@ -54,11 +54,10 @@ var Fourier = (function() {
       rec_FFT_radix2(out, start+N/2, sig, offset+s, N/2, 2*s);
       for (var k = 0; k < N/2; k++) {
         var twiddle = cisExp(-2*Math.PI*k/N);
+        var factor = twiddle.times(out[start+k+N/2]);
         var t = out[start+k];
-        out[start+k] = t.plus(twiddle.times(out[start+k+N/2]));
-        out[start+k+N/2] = t.minus(
-          twiddle.times(out[start+k+N/2])
-        );
+        out[start+k] = t.plus(factor);
+        out[start+k+N/2] = t.minus(factor);
       }
     }
   }
@@ -90,113 +89,101 @@ var Fourier = (function() {
       rec_invFFT_radix2(sig, start+N/2, transform, offset+s, N/2, 2*s);
       for (var k = 0; k < N/2; k++) {
         var twiddle = cisExp(2*Math.PI*k/N);
+        var factor = twiddle.times(sig[start+k+N/2]);
         var t = sig[start+k];
-        sig[start+k] = t.plus(twiddle.times(sig[start+k+N/2]));
-        sig[start+k+N/2] = t.minus(
-          twiddle.times(sig[start+k+N/2])
-        );
+        sig[start+k] = t.plus(factor);
+        sig[start+k+N/2] = t.minus(factor);
       }
     }
   }
+
+
+  function shiftBottom(transform,dims){
+    //shift bottom half one pixel to right
+    var ret=[];
+    var N = dims[1];
+    var M = dims[0];
+
+    for (var n=0;n<N;n++){
+      for (var m=0;m<M;m++){
+
+        if(m<M/2){
+          var idx = n*N + m;
+        } else { //shift bottom half one pixel to right
+          var idx = n==N-1 ? m : (n+1)*N + m;
+        }
+        ret.push(transform[idx]);
+      }
+    }
+    return ret;
+  }
+
+  function unshiftBottom(transform,dims){
+    //shift bottom half one pixel to left
+    var ret=[];
+    var N = dims[1];
+    var M = dims[0];
+
+    for (var n=0;n<N;n++){
+      for (var m=0;m<M;m++){
+        if(m<M/2){
+          var idx = n*N + m;
+        } else { //shift bottom half one pixel to right
+          if(n==0){
+            var idx = (N-1)*N+m;
+          } else {
+            var idx = (n-1)*N +m;
+          }
+        }
+        ret.push(transform[idx]);
+      }
+    }
+    return ret;
+  }
   
-  function shiftFFT(transform, dims) {
-    return flip(
-        flipRightHalf(
-          halfShiftFFT(
-            halfShiftFFT(
-              transform,
-              dims
-            ),
-            dims
-          ),
-          dims
-        ),
-        dims
-      );
+  function swapQuadrants(transform, dims) {
+    //swap upper first and third quadrant and second and fourth
+
+    var ret=[];
+    var N = dims[1];
+    var M = dims[0];
+
+    for (var n=0;n<N;n++){
+      var mrow=[];
+      for (var m=0;m<M;m++){
+        //map first quadrant to third quadrant
+        if(m<M/2 && n>=N/2){
+          var idx = (n-N/2)*dims[0] + M/2+m;
+          mrow.push(transform[idx]);
+        }
+        //map second quadrant to fourth quadrant
+        if(m<M/2 && n<N/2){
+          var idx = (N/2+n)*dims[0] + M/2+m
+        }
+        //map third quadrant to first quadrant
+        if(m>=M/2 && n<N/2){
+          var idx = (N/2+n)*dims[0] + (m-N/2)
+          mrow.push(transform[N/2+n][m-N/2]);
+        }
+        //map fourth quadrant to second quadrant
+        if(m>=M/2 && n>=N/2){
+          var idx = (n-N/2)*dims[0] + (m-N/2)
+        }
+        ret.push(transform[idx]);
+      }
+    }
+    return ret;
+  }
+
+    function shiftFFT(transform, dims) {
+    return shiftBottom(swapQuadrants(transform,dims),dims);
   }
 
   function unshiftFFT(transform, dims) {
-    return halfShiftFFT(
-      halfShiftFFT(
-        flipRightHalf(flip(
-            transform,
-            dims
-            ),
-          dims
-        ),
-        dims
-      ),
-      dims
-    );
-  }
-
-  function halfShiftFFT(transform, dims) {
-    var ret = [];
-    var N = dims[1];
-    var M = dims[0];
-    for (var n = 0, vOff = N/2; n < N; n++) {
-      for (var m = 0; m < M/2; m++) {
-        var idx = vOff*dims[0] + m;
-        ret.push(transform[idx]);
-      }
-      vOff += vOff >= N/2 ? -N/2 : (N/2)+1;
-    }
-    for (var n = 0, vOff = N/2; n < N; n++) {
-      for (var m = M/2; m < M; m++) {
-        var idx = vOff*dims[0] + m;
-        ret.push(transform[idx]);
-      }
-      vOff += vOff >= N/2 ? -N/2 : (N/2)+1;
-    }
-    return ret;
+    return swapQuadrants(unshiftBottom(transform,dims),dims);
   }
 
 
-  function flip(transform, dims){
-    var ret = [];
-  
-    // flip the right half of the image across the x axis
-    var N = dims[1];
-    var M = dims[0];
-    for (var n = 0; n < N; n++) {
-      for (var m = 0; m < M; m++) {
-        if (m>=M/2){
-          if (n==N-2){
-            var $n = 0;
-          } else if (n==N-1){
-            var $n = 1;
-          } else {
-            var $n = N-n-2;
-          };
-        } else {
-          var $n = n;
-        };
-        var idx = $n*dims[0] + m;
-        ret.push(transform[idx]);
-      }
-    }
-  
-    return ret;
-  }
-
-
-
-  function flipRightHalf(transform, dims) {
-    var ret = [];
-  
-    // flip the right half of the image across the x axis
-    var N = dims[1];
-    var M = dims[0];
-    for (var n = 0; n < N; n++) {
-      for (var m = 0; m < M; m++) {
-        var $n = m < M/2 ? n : (N-1)-n;
-        var idx = $n*dims[0] + m;
-        ret.push(transform[idx]);
-      }
-    }
-  
-    return ret;
-  }
   
   /********************
    * helper functions */
@@ -238,6 +225,6 @@ var Fourier = (function() {
     invert: invFFT,
     shift: shiftFFT,
     unshift: unshiftFFT,
-    filter: filter
+    filter: filter,
   };
 })();
