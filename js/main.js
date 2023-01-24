@@ -262,6 +262,8 @@ var FourierImageAnalysis = (function() {
           if (error > maxError) maxError = error;
         }
       }
+
+      console.log(minError,maxError);
   
       // draw the pixels
       var currImageData = ctxs[3].getImageData(

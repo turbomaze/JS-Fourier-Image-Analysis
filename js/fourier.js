@@ -100,23 +100,28 @@ var Fourier = (function() {
   }
   
   function shiftFFT(transform, dims) {
-    return flipRightHalf(
-      halfShiftFFT(
-        halfShiftFFT(
-          transform,
+    return flip(
+        flipRightHalf(
+          halfShiftFFT(
+            halfShiftFFT(
+              transform,
+              dims
+            ),
+            dims
+          ),
           dims
         ),
         dims
-      ),
-      dims
-    );
+      );
   }
 
   function unshiftFFT(transform, dims) {
     return halfShiftFFT(
       halfShiftFFT(
-        flipRightHalf(
-          transform,
+        flipRightHalf(flip(
+            transform,
+            dims
+            ),
           dims
         ),
         dims
@@ -145,6 +150,36 @@ var Fourier = (function() {
     }
     return ret;
   }
+
+
+  function flip(transform, dims){
+    var ret = [];
+  
+    // flip the right half of the image across the x axis
+    var N = dims[1];
+    var M = dims[0];
+    for (var n = 0; n < N; n++) {
+      for (var m = 0; m < M; m++) {
+        if (m>=M/2){
+          if (n==N-2){
+            var $n = 0;
+          } else if (n==N-1){
+            var $n = 1;
+          } else {
+            var $n = N-n-2;
+          };
+        } else {
+          var $n = n;
+        };
+        var idx = $n*dims[0] + m;
+        ret.push(transform[idx]);
+      }
+    }
+  
+    return ret;
+  }
+
+
 
   function flipRightHalf(transform, dims) {
     var ret = [];
